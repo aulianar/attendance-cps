@@ -24,7 +24,7 @@ Route::get('/', function () {
 Route::middleware(['verified', 'auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/attendance', [AttendanceController::class, 'index'])->name('attendance.index');
-    Route::get('attendance/exportpdf',[AttendanceController::class,'exportPdf']);
+    Route::get('attendance/exportpdf', [AttendanceController::class, 'exportPdf'])->name('attendance.exportpdf');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -36,7 +36,6 @@ Route::middleware(['verified', 'auth'])->group(function () {
         Route::patch('attendance/{attendance}/izin', [AttendanceController::class, 'izin'])->name('attendance.izin');
         Route::get('/attendance/create', [AttendanceController::class, 'create'])->name('attendance.create');
         Route::post('/attendance/store', [AttendanceController::class, 'store'])->name('attendance.store');
-        // Route::get('/attendance/showAll', 'AttendanceController@showAll')->name('attendance.showAll');
         Route::get('/user', [UserController::class, 'index'])->name('user.index');
         Route::delete('/user/{user}', [UserController::class, 'destroy'])->name('user.destroy');
         Route::patch('/user/{user}/makeadmin', [UserController::class, 'makeadmin'])->name('user.makeadmin');

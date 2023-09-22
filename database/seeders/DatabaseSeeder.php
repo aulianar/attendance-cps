@@ -27,6 +27,6 @@ class DatabaseSeeder extends Seeder
             'is_admin'          => true
         ]);
         User::factory(20)->create();
-        Attendance::factory(30)->create();
+        Attendance::factory(3000)->create();
     }
 }

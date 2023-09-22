@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ExportAttendance;
 use App\Models\Attendance;
 use App\Models\User;
 use Carbon\Carbon;
@@ -10,64 +11,85 @@ use Illuminate\Http\Request;
 
 class AttendanceController extends Controller
 {
+    protected $paginate = 10;
     public function index()
     {
-        // $admin = auth()->user()->is_admin;
-        // if ($admin == false) {
-        //     $attendances = Attendance::where('user_id', auth()->user()->id)
-        //         ->paginate(10);
-
-        //     return view('attendance.index', compact('attendances', 'admin'));
-        // }
-        // $search = request('search');
-        // if ($search) {
-        //     $attendances = Attendance::whereHas('user', function ($query) use ($search) {
-        //         $query->where('status', 'like', '%' . $search . '%')
-        //             ->orWhere('name', 'like', '%' . $search . '%')
-        //             ->orWhere('created_at', 'like', '%' . $search . '%');
-        //     })
-        //         ->orderBy('created_at', 'desc')
-        //         ->paginate(20)
-        //         ->withQueryString();
-        // } else {
-        //     $attendances = Attendance::where('user_id', '!=', '1')
-        //         ->orderBy('created_at', 'desc')
-        //         ->paginate(10);
-        // }
-        // return view('attendance.index', compact('attendances', 'admin'));
-
-        $admin = auth()->user()->is_admin;
-        $search = request('search');
+        $admin      = auth()->user()->is_admin;
+        $search     = request('search');
         $searchDate = request('searchDate'); // Ambil nilai pencarian tanggal
-    
+
+        // Create a base query for the Attendance model
+        $query = Attendance::query();
+
         if ($admin == false) {
-            $attendances = Attendance::where('user_id', auth()->user()->id)
-                ->paginate(10);
-    
-            return view('attendance.index', compact('attendances', 'admin'));
+            // Apply user_id filter for non-admin users
+            $query->where('user_id', auth()->user()->id);
         }
-    
+
         if ($search) {
-            $attendances = Attendance::whereHas('user', function ($query) use ($search) {
+            $query->whereHas('user', function ($query) use ($search) {
                 $query->where('status', 'like', '%' . $search . '%')
-                    ->orWhere('name', 'like', '%' . $search . '%');
+                    ->orWhere('name', 'like', '%' . $search . '%')
+                    ->orWhere('email', 'like', '%' . $search . '%');
             });
         } else {
-            $attendances = Attendance::where('user_id', '!=', '1');
+            $query->where('user_id', '!=', '1');
         }
-    
-        // Tambahkan kondisi pencarian berdasarkan tanggal
+
+        // Apply the date filter, if provided
         if ($searchDate) {
-            $attendances->whereDate('created_at', $searchDate);
+            $query->whereDate('created_at', $searchDate);
         }
-    
-        $attendances = $attendances
-            ->orderBy('created_at', 'desc')
-            ->paginate(20)
-            ->withQueryString();
-    
+
+        // Apply order by clause after filtering
+        $query->orderBy('created_at', 'desc');
+
+        // Paginate the results
+        $attendances = $query->paginate($this->paginate)->withQueryString();
+
         return view('attendance.index', compact('attendances', 'admin'));
     }
+
+
+    public function exportPdf()
+    {
+        $admin      = auth()->user()->is_admin;
+        $search     = request('search');
+        $searchDate = request('searchDate'); // Ambil nilai pencarian tanggal
+
+        // Create a base query for the Attendance model
+        $query = Attendance::query();
+
+        if ($admin == false) {
+            // Apply user_id filter for non-admin users
+            $query->where('user_id', auth()->user()->id);
+        }
+
+        if ($search) {
+            $query->whereHas('user', function ($query) use ($search) {
+                $query->where('status', 'like', '%' . $search . '%')
+                    ->orWhere('name', 'like', '%' . $search . '%')
+                    ->orWhere('email', 'like', '%' . $search . '%');
+            });
+        } else {
+            $query->where('user_id', '!=', '1');
+        }
+
+        // Apply the date filter, if provided
+        if ($searchDate) {
+            $query->whereDate('created_at', $searchDate);
+        }
+
+        // Get the current page of matching records based on the pagination query parameters
+        $attendances = $query->paginate(request('per_page'));
+
+        // Load the PDF view and pass the data
+        $pdf = PDF::loadView('export.attendancepdf', ['attendances' => $attendances]);
+
+        // Download the PDF file
+        return $pdf->download('attendance.pdf');
+    }
+
 
     public function create()
     {
@@ -82,7 +104,8 @@ class AttendanceController extends Controller
 
         $request->validate([
             'email'  => 'required|email',
-            'status' => 'required|in:hadir,sakit,izin,absen', // Make sure 'status' is one of these values
+            'status' => 'required|in:hadir,sakit,izin,absen',
+            // Make sure 'status' is one of these values
         ]);
 
         $existingAttendance = Attendance::where('user_id', $user_id->id)
@@ -150,29 +173,46 @@ class AttendanceController extends Controller
         }
     }
 
-    public function exportPdf()
-    {
-        // $attendances = \App\Models\Attendance::all();
-        // $pdf = PDF::loadView('export.attendancepdf',['attendances' => $attendances]);
-        // return $pdf->download('attendance.pdf');
+
+    // $attendances = $response->getData()['attendances'];
+    // dd($attendances);
+    // $pdf = PDF::loadView('export.attendancepdf', ['attendances' => $attendances]);
+    // return $pdf->download('attendance.pdf');
 
 
-        if (auth()->user()->is_admin){
-            $attendances = Attendance::all();
-            $pdf = PDF::loadView('export.attendancepdf',['attendances' => $attendances]);
-            return $pdf->download('attendance.pdf');
-        } else {
-            $attendances =  Attendance::where('user_id', auth()->user()->id)->get();
-            $pdf = PDF::loadView('export.attendancepdf',['attendances' => $attendances]);
-            return $pdf->download('attendance.pdf');
-        }
-    }
-
-    // public function showAll()
-    // {
-    //     $attendance = Attendance::all(); // Mengambil semua data kehadiran
-
-    //     return view('attendances.showAll', compact('attendances')); // Menampilkan data kehadiran di tampilan show_all.blade.php
+    // if (auth()->user()->is_admin) {
+    //     $search     = request('search');
+    //     $searchDate = request('searchDate');
+    //     if ($search && $searchDate) {
+    //         $attendances = Attendance::whereHas('user', function ($query) use ($search) {
+    //             $query->where('status', 'like', '%' . $search . '%')
+    //                 ->orWhere('name', 'like', '%' . $search . '%')
+    //                 ->orWhere('email', 'like', '%' . $search . '%');
+    //         })->whereDate('created_at', $searchDate)->get();
+    //         $pdf         = PDF::loadView('export.attendancepdf', ['attendances' => $attendances]);
+    //         return $pdf->download('attendance.pdf');
+    //     } else if ($search) {
+    //         $attendances = Attendance::whereHas('user', function ($query) use ($search) {
+    //             $query->where('status', 'like', '%' . $search . '%')
+    //                 ->orWhere('name', 'like', '%' . $search . '%')
+    //                 ->orWhere('email', 'like', '%' . $search . '%');
+    //         });
+    //         $pdf         = PDF::loadView('export.attendancepdf', ['attendances' => $attendances]);
+    //         return $pdf->download('attendance.pdf');
+    //     } else if ($searchDate) {
+    //         $attendances = Attendance::whereDate('created_at', $searchDate)->get();
+    //         $pdf         = PDF::loadView('export.attendancepdf', ['attendances' => $attendances]);
+    //         return $pdf->download('attendance.pdf');
+    //     } else {
+    //         $attendances = Attendance::all();
+    //         $pdf         = PDF::loadView('export.attendancepdf', ['attendances' => $attendances]);
+    //         return $pdf->download('attendance.pdf');
+    //     }
+    // } else {
+    //     $attendances = Attendance::where('user_id', auth()->user()->id)->get();
+    //     $pdf         = PDF::loadView('export.attendancepdf', ['attendances' => $attendances]);
+    //     return $pdf->download('attendance.pdf');
     // }
+
 
 }

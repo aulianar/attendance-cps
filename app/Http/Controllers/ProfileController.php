@@ -42,9 +42,13 @@ class ProfileController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        if (auth()->user()->is_admin) {
+            return redirect()->route('profile.edit')->with('failed', 'cannot-delete-admin');
+        }
         $request->validateWithBag('userDeletion', [
             'password' => ['required', 'current_password'],
         ]);
+
 
         $user = $request->user();
 

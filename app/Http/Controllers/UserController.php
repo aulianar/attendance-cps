@@ -9,6 +9,7 @@ class UserController extends Controller
 {
     public function index()
     {
+        $login  = auth()->user()->id;
         $search = request('search');
         if ($search) {
             $users = User::where(function ($query) use ($search) {
@@ -16,15 +17,22 @@ class UserController extends Controller
                     ->orWhere('email', 'like', '%' . $search . '%');
             })
                 ->orderBy('name')
-                ->where('id', '!=', '1')
+                ->where([
+                    // khusus admin
+                    ['id', '!=', '1'],
+                    // selain admin
+                    ['id', '!=', $login]
+                ])
                 ->paginate(20)
                 ->withQueryString();
         } else {
-            $users = User::where('id', '!=', '1')
+            $users = User::where([
+                ['id', '!=', '1'],
+                ['id', '!=', $login]
+            ])
                 ->orderBy('name')
                 ->paginate(10);
         }
-        // $users = User::where('');
         return view('user.index', compact('users'));
     }
     public function makeadmin(User $user)

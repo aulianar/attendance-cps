@@ -22,6 +22,13 @@ class DashboardController extends Controller
 
             if (!$existingAttendance) {
                 // Create a new attendance record
+                $time = Carbon::now()->format('H:i:s');
+                if ($time >= '17:00:00') {
+                    Attendance::create([
+                        'user_id' => $userId,
+                        'status'  => 'absen',
+                    ]);
+                }
                 Attendance::create([
                     'user_id' => $userId,
                     'status'  => 'hadir',

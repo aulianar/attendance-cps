@@ -23,7 +23,7 @@ class AttendanceFactory extends Factory
         return [
             'user_id'    => User::inRandomOrder()->first()->id,
             'status'     => Arr::random(['hadir', 'sakit', 'izin', 'absen']),
-            'created_at' => Carbon::now()->month(8)->hour(rand(7, 8))->minute(rand(0, 59))->second(rand(0, 59)),
+            'created_at' => Carbon::now()->day(rand(1, 30))->month(9)->hour(rand(7, 20))->minute(rand(0, 59))->second(rand(0, 59)),
         ];
     }
 }
